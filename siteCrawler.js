@@ -1,7 +1,7 @@
 var Crawler = require('crawler');
 var url = require('url');
 var level = require('level');
-
+var sub = require('level-sublevel');
 // DEFAULT URLS HERE
 var DEFAULT_scheduleHomeURL = 'http://www.registrar.ucla.edu/schedule/schedulehome.aspx';
 
@@ -49,24 +49,54 @@ module.exports.loadTagNames = function(db) {
 };
 */
 
+
+
+//updates db with the majors listed on the UCLA registrar page.
 module.exports.updateMajorList = function(db) {
+    
+    var majorDb = db.sublevel('majors');
+    var majorsBatch = [];
+    function processMajors (error, result, $) {
+        $('#' + DEFAULT_majorListWrapperId)
+                .children()
+                .each(function(i, elem) {
+                    var majorName = $(this).text();
+                    var majorCode = $(this).attr('value');
+                    //TODO: REMOVE THIS console.log()
+                    //console.log(majorName + ": " + majorCode);
+                    //majorDb.put(majorCode, majorName)
+                    majorsBatch.push({type: 'put', key: majorCode, value: majorName});
+                });
+        
+    }
+
+    function updateDb() {
+        majorDb.batch(majorsBatch);
+    }
+
     var c = new Crawler({
-            maxConnections : 10,
-            callback : function (error, result, $) {
-                var majors = $('#' + DEFAULT_majorListWrapperId).children();
-                console.log(majors);
-            }
-    });
+                maxConnections : 10,
+                callback : processMajors,
+                onDrain: updateDb
+            });
+
+
+    //c.queue([{
+    //            /*jshint multistr: true */
+    //            html:
+    //            '<select size="7" name="ctl00$BodyContentPlaceHolder$SOCmain$lstSubjectArea" \
+    //                id="ctl00_BodyContentPlaceHolder_SOCmain_lstSubjectArea"> \
+    //                <option value="AERO ST">Aerospace Studies</option> \
+    //                <option value="AF AMER">African American Studies</option> \
+    //                <option value="AF LANG">African Languages</option> \
+    //                <option value="AFRC ST">African Studies</option> \
+    //            </select>'
+    //        }]);
     c.queue([{
-                /*jshint multistr: true */
-                html:
-                '<select size="7" name="ctl00$BodyContentPlaceHolder$SOCmain$lstSubjectArea" \
-                    id="ctl00_BodyContentPlaceHolder_SOCmain_lstSubjectArea"> \
-                    <option value="AERO ST">Aerospace Studies</option> \
-                    <option value="AF AMER">African American Studies</option> \
-                    <option value="AF LANG">African Languages</option> \
-                    <option value="AFRC ST">African Studies</option> \
-                </select>'
-            }]);
-    //c.queue(DEFAULT_scheduleHomeURL);
+        uri: DEFAULT_scheduleHomeURL,
+        callback: processMajors}]);
+};
+
+module.exports.updateMajorCourses = function(db) {
+
 };
