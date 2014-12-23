@@ -2,11 +2,17 @@ var Crawler = require('crawler');
 var url = require('url');
 var level = require('level');
 var sub = require('level-sublevel');
+var mysql = require('mysql');
 // DEFAULT URLS HERE
 var DEFAULT_scheduleHomeURL = 'http://www.registrar.ucla.edu/schedule/schedulehome.aspx';
-
+var DEFAULT_scheduleMajorURL = 'http://www.registrar.ucla.edu/schedule/crsredir.aspx'; //termsel=14S&subareasel=COM+SCI
 // DEFAULT TAG NAMES HERE
 var DEFAULT_majorListWrapperId = 'ctl00_BodyContentPlaceHolder_SOCmain_lstSubjectArea';
+
+
+// OTHER DEFAULT VARS HERE
+var DEFAULT_academicTerm = '14S';
+
 //TODO: integrate this wrapper, move url retrieval to the DB
 function getWrapper(db, key, defaultVal, notFoundMsg) {
     var value;
@@ -52,26 +58,32 @@ module.exports.loadTagNames = function(db) {
 
 
 //updates db with the majors listed on the UCLA registrar page.
-module.exports.updateMajorList = function(db) {
+module.exports.updateMajorList = function(connection) {
     
-    var majorDb = db.sublevel('majors');
-    var majorsBatch = [];
     function processMajors (error, result, $) {
         $('#' + DEFAULT_majorListWrapperId)
                 .children()
                 .each(function(i, elem) {
+                    //console.log('preparing to insert into table');
                     var majorName = $(this).text();
                     var majorCode = $(this).attr('value');
-                    //TODO: REMOVE THIS console.log()
-                    //console.log(majorName + ": " + majorCode);
-                    //majorDb.put(majorCode, majorName)
-                    majorsBatch.push({type: 'put', key: majorCode, value: majorName});
+                    var insertSQL = "INSERT INTO majors (major_code, major_name) " +
+                        "VALUES ('" + majorCode + "', '" + majorName + "')";
+                    //console.log(insertSQL);
+                    connection.query(insertSQL, 
+                        function(err, results) {
+                            if(err) {
+                                console.log(err);
+                                return;
+                            }
+                            //console.log(results);
+                        });
                 });
         
     }
 
     function updateDb() {
-        majorDb.batch(majorsBatch);
+        //majorDb.batch(majorsBatch);
     }
 
     var c = new Crawler({
@@ -98,5 +110,6 @@ module.exports.updateMajorList = function(db) {
 };
 
 module.exports.updateMajorCourses = function(db) {
+    //var courseDb = db.sublevel('courses');
 
 };
