@@ -12,10 +12,18 @@ class BaseModel(pw.Model):
     class Meta:
         database = myDB
 
-class majors(BaseModel):
+class major(BaseModel):
     id = pw.PrimaryKeyField()
     major_code = pw.CharField(max_length=255)
     major_name = pw.CharField(max_length=255)
+    
+class course(BaseModel):
+    id = pw.PrimaryKeyField()
+    major = pw.ForeignKeyField(major, related_name='courses')
+    course_code = pw.CharField(max_length=255)
+    course_name = pw.CharField(max_length=255)
 
-
-
+def createTables():
+    myDB.connect()
+    myDB.create_tables([major, course])
+    myDB.close()
