@@ -2,6 +2,7 @@ from lxml import html
 import requests
 import classPlannerDB as db
 import re 
+import logUtility
 
 MAJOR_LIST_URL = 'http://www.registrar.ucla.edu/schedule/schedulehome.aspx'
 COURSE_LIST_URL = 'http://www.registrar.ucla.edu/schedule/crsredir.aspx?termsel=14S&subareasel=' # COM+SCI
@@ -20,20 +21,7 @@ CUR_TERM = '14S'
 
 #for major in test:
 #    print major.major_code, major.major_name
-def printTitle(title):
-    border = '+'
-    for i in range(0, len(title) + 2):
-        border += '-'
-    border += '+'
-    print border
-    print '|', title, '|'
-    print border
 
-def printError(error):
-    print 'ERROR:', error
-
-def printWarning(warning):
-    print 'WARNING:', warning
 
 def getPageTree(url):
     page = requests.get(url)
@@ -41,7 +29,7 @@ def getPageTree(url):
     return html.fromstring(page.text)
 
 def clearTables():
-    printTitle('Deleting current entries')
+    logUtility.title('Deleting current entries')
     print 'Deleted', db.course.delete().execute(), 'major(s)'
     print 'Deleted', db.major.delete().execute(), 'course(s)'
     print '...done\n'
@@ -50,10 +38,10 @@ def insertMajors():
     if(db.major.select().count() != 0):
         error = 'Tried to call insertMajors() with non-empty majors table'
         error += '\n--> Hint: call clearTables() first'
-        printError(error)
+        logUtility.error(error)
         return
 
-    printTitle('Inserting Majors in Database')
+    logUtility.title('Inserting Majors in Database')
     tree = getPageTree(MAJOR_LIST_URL)    
     majorCodes = tree.xpath(MAJOR_XPATH + '/@value')
     majorNames = tree.xpath(MAJOR_XPATH + '/text()')
@@ -76,14 +64,14 @@ def insertCourses():
     if(db.course.select().count() != 0):
         error = 'Tried to call insertCourses() with non-empty table "course"'
         error += '\n--> Hint: call clearTables() first'
-        printError(error)
+        logUtility.error(error)
         return
 
     if(db.major.select().count() == 0):
         warning = 'Calling insertCourses() with empty table "major"'
-        printWarning(warning)
+        logUtility.warning(warning)
 
-    printTitle('Inserting Courses in Database')
+    logUtility.title('Inserting Courses in Database')
 
     majors = db.major.select()
     db.myDB.connect()
